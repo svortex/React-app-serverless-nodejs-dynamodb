@@ -1,0 +1,104 @@
+#service: serverless-rest-api-with-dynamodb
+service: rest
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+plugins:
+  - serverless-localstack
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: local
+  region: us-east-1
+  profile: local
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+        - lambda:*
+      Resource: "*"
+
+
+
+functions:
+  create:
+    handler: todos/create.create
+    events:
+      - http:
+          path: todos
+          method: post
+          cors: 
+            origin: 'http://localhost:3000'
+
+  list:
+    handler: todos/list.list
+    events:
+      - http:
+          path: todos
+          method: get
+          cors: 
+            origin: 'http://localhost:3000'
+
+  get:
+    handler: todos/get.get
+    events:
+      - http:
+          path: todos/{id}
+          method: get
+          cors: 
+            origin: 'http://localhost:3000'
+
+  update:
+    handler: todos/update.update
+    events:
+      - http:
+          path: todos/{id}
+          method: put
+          cors: 
+            origin: 'http://localhost:3000'
+
+  delete:
+    handler: todos/delete.delete
+    events:
+      - http:
+          path: todos/{id}
+          method: delete
+          cors: 
+            origin: 'http://localhost:3000'
+
+resources:
+  Resources:
+    TodosDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+
+
+custom:
+  localstack:
+    stages:
+      # list of stages for which the plugin should be enabled
+      - local
+    host: http://localhost  # optional - LocalStack host to connect to
+    autostart: true  # optional - start LocalStack in Docker on Serverless deploy
+    lambda:
+      # Enable this flag to improve performance
+      mountCode: False
+    docker:
+      # Enable this flag to run "docker ..." commands as sudo
+      sudo: False
